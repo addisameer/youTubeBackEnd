@@ -1,16 +1,23 @@
 import dotenv from "dotenv"
 dotenv.config()
+import { connectDb } from "./db/index.js"
+import { app } from "./app.js"
 
-import express from "express"
-const app = express()
 
 //creating routes
 app.get('/' , (req,res) => {
     res.send("Home Page")
 })
 
-//creating server
+//Db connection
 const port = process.env.PORT || 5000
+connectDb()
+.then(() => {
 app.listen(port , () => {
     console.log(`Server is listening on the port ${port} `);
+})
+
+})
+.catch((err) => {
+    console.error("Db connection failed while calling" , err)
 })
