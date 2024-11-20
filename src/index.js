@@ -6,11 +6,16 @@ import { app } from "./app.js"
 
 //creating routes
 app.get('/' , (req,res) => {
+    console.log("Home Page");
     res.send("Home Page")
+})
+app.get('/about' , (req,res) => {
+    console.log("About Page");
+    res.send("About Page")
 })
 
 //Db connection
-const port = process.env.PORT || 5000
+const port = process.env.PORT
 connectDb()
 .then(() => {
 app.listen(port , () => {

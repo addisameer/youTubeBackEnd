@@ -1,27 +1,7 @@
-const asyncHandler   = async (requestHandler) => {
-    try {
-        await requestHandler()        
-    } catch (error) {
-        console.log(error);
+export const asyncHandler = (requestHandler) => {
+  return (req,res,next) => {
+        Promise.resolve(requestHandler(req,res,next)).catch( (err) => {
+            next(err)
+        })
     }
-
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
