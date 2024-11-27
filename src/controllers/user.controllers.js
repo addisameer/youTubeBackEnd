@@ -108,118 +108,61 @@ const loginUser = asyncHandler(async(req,res) => {
 
 })
 const logoutUser = asyncHandler(async(req,res)  => {
-    console.log(req.cookies);
-    console.log(req.user);
-    res.status(200).json(new ApiResponse(200 , "Logged out"));
+    //todees for logout
+    //delete refresh tokern from db
+    //clear cookies for that logged in user 
+    //reference of logged In user is in req.user object from verifyJWT middleware .
+
+    // console.log(req.user);
+    const user = await User.findById(req.user._id);
+    user.refreshToken = undefined;
+    await user.save();
+    res.clearCookie("accessToken")
+    res.clearCookie("refreshToken")
+
+    const options = {
+        httpOnly : true,
+        secure : true 
+    }
+
+    res.status(200).json(new ApiResponse(200 ,{},  "Logged out"));
+})
+const refreshAccessToken = asyncHandler(async(req,res) => {
+    const incomingRefreshToken = req.cookie?.refreshToken || req.body().refreshToken ;
+    if(!incomingRefreshToken){
+        throw new ApiError(400 , " do not have refresh token to refresh access token .  .");
+    }
+   try {
+     const decodedRefreshToken  = await jwt.verify(incomingRefreshToken,process.env.REFRESH_TOKEN_SECRET);
+     const user = await User.findById(decodedRefreshToken?._id);
+     if(!user){
+        throw new ApiError(400 , "Not a valid refresh Token" );
+     }
+     if(incomingRefreshToken !== user.refreshToken){
+         throw new ApiError(400 , " refresh Tokens not matched .");
+     }
+     const {accessToken , refreshToken } = await generateAccessAndRefreshTokens(user._id);
+     const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
+     const options = {
+         httpOnly : true,
+         secure : true 
+     }
+ 
+     res
+     .status(200)
+     .cookie("accessToken",accessToken,options)
+     .cookie("refreshToken",refreshToken,options)
+     .json(new ApiResponse(200 , {
+         user : loggedInUser ,  accessToken ,  refreshToken
+     } ,   "Access token refreshed ."))
+   } catch (error) {
+    throw new ApiError(500 , "Something went wrong while refreshing access Token .")
+   }
+
 })
 export {
     registerUser, 
     loginUser,
     logoutUser,
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    refreshAccessToken,
+} 
