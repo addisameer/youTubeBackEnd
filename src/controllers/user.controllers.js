@@ -1,22 +1,35 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from  "../utils/ApiError.js";
 
+
 import { ApiResponse } from  "../utils/ApiResponse.js";
 import {User} from "../models/user.model.js";
 import {uploadOnCloudinary} from "../utils/cloudinary.js"
 
-//  registerUser controller logic
-// get user details from frontend
-// validation - not empty
-// check if user already exist - email, username 
-// check for images, check for avatar
-// upload them to clodinary , avatar 
-// create user object , create entry in db 
-// remove password and refreshToken field from response          
-// check for user creation 
-// return res 
-
+const generateAccessAndRefreshTokens = async(userId) => {
+    try {
+        const user = await User.findById(userId);
+        const accessToken = await user.generateAccessToken()
+        const refreshToken = await user.generateRefreshToken()
+        user.refreshToken = refreshToken;
+        await user.save();
+        return {accessToken ,refreshToken}
+    } catch (error) {
+        throw new ApiError(500 , "something went wrong while genrating access and refresh tokens")
+        
+    }
+}
 const registerUser = asyncHandler(async(req,res) => {
+    //  registerUser controller logic
+    // get user details from frontend
+    // validation - not empty
+    // check if user already exist - email, username 
+    // check for images, check for avatar
+    // upload them to clodinary , avatar 
+    // create user object , create entry in db 
+    // remove password and refreshToken field from response          
+    // check for user creation 
+    // return res 
     const {userName , email , fullName ,  password } = req.body;
     if(!(userName&&email&&fullName&&password)){
         throw new ApiError(400,"Please fill all the required field")
@@ -54,7 +67,56 @@ const registerUser = asyncHandler(async(req,res) => {
         new ApiResponse(200 , createdUser , "user has been registered successfully .")
     )
 })
-export {registerUser}
+const loginUser = asyncHandler(async(req,res) => {
+    // todo's for login user . 
+    // take email or username and password from user  . 
+    //apply validation - not registered and wrong password 
+    //generate access and refresh token
+    // send access and refresh token to frontend by cookies
+    //store refresh token in database 
+    //send successful login response to frontend.
+
+    const {email , userName , password } = req.body;
+    if(!(email || userName) || !password){
+        throw new ApiError(400  , "Please fill all the required field.")
+    }
+
+    const user =  await User.findOne({
+        $or : [{email} , {userName}]
+    })
+    if(!user){
+        throw new ApiError(400 , "User is not registered.")
+    }
+    if(!await user.isPasswordCorrect(password)){
+        throw new ApiError(400 , "Enter valid password . ")
+     }
+    const {accessToken , refreshToken} = await generateAccessAndRefreshTokens(user._id);
+    const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
+    const options = {
+        httpOnly : true,
+        secure : true 
+    }
+
+    res
+    .status(200)
+    .cookie("accessToken",accessToken,options)
+    .cookie("refreshToken",refreshToken,options)
+    .json(new ApiResponse(200 , {
+        user : loggedInUser ,  accessToken ,  refreshToken
+    } ,   "logged In successfully"))
+  //problem is that i dont add access and refresh token in user object while sending response.
+
+})
+const logoutUser = asyncHandler(async(req,res)  => {
+    console.log(req.cookies);
+    console.log(req.user);
+    res.status(200).json(new ApiResponse(200 , "Logged out"));
+})
+export {
+    registerUser, 
+    loginUser,
+    logoutUser,
+}
 
 
 
